@@ -1,4 +1,4 @@
-import mongoose from "npm:mongoose@^6.7";
+import mongoose from "npm:mongoose@6.7.5";
 import config from "./config.ts";
 
 const uri:string = config.mongo.uri;

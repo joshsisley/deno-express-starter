@@ -25,7 +25,6 @@ const jwt = async (payload: any, done: any) => {
 const oAuth = (service: 'facebook' | 'google') => async (token:any, done:any) => {
   try {
     const userData: IOauthData = await authProviders[service](token);
-    // const user = await User.schema.statics.oAuthLogin(userData);
     const user = await User.oAuthLogin(userData.service, userData.id, userData.email, userData.name);
     return done(null, user);
   } catch (err) {

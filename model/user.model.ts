@@ -1,10 +1,10 @@
 // deno-lint-ignore-file no-explicit-any
-import mongoose from "npm:mongoose@^6.7";
-import { omitBy, isNil } from 'npm:lodash@^4.17.21';
-import bcrypt from "npm:bcrypt@^5.0.1";
+import mongoose from "npm:mongoose@^6.8";
+import * as _ from 'npm:lodash@^4.17.15';
+import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 import moment from "npm:moment-timezone@^0.5.33";
 import jwt from "npm:jwt-simple";
-import uuidv4 from "npm:uuid/v4";
+import * as uuid from "npm:uuid";
 import config from '../config/config.ts';
 
 interface TransformedObject {
@@ -18,7 +18,8 @@ export interface IOauthData {
   email: string;
 }
 
-interface IUser extends mongoose.Document {
+export interface IUser extends mongoose.Document {
+  _id: string;
   name: string;
   email: string;
   password: string;
@@ -32,10 +33,14 @@ interface IUser extends mongoose.Document {
   comparePassword: (candidatePassword: string) => Promise<boolean>;
   token: () => string;
   gravatar: (size: number) => string;
+  transform: () => TransformedObject;
 }
 
 interface IUserModel extends mongoose.Model<IUser> {
+  roles: any;
   oAuthLogin: (service: string, id: string, email: string, name: string) => Promise<IUser>;
+  checkDuplicateEmail: (error: any) => string;
+  findAndGenerateToken: (options: { email: string; refreshObject: any; }) => Promise<{ user: IUser; accessToken: string; refreshToken: string; }>;
 }
 
 /**
@@ -91,7 +96,7 @@ userSchema.pre('save', async function save(next) {
   try {
     if (!this.isModified('password')) return next();
 
-    const rounds = config.env === 'test' ? 1 : 10;
+    const rounds = config.env === 'test' ? '1' : '10';
 
     const hash = await bcrypt.hash(this.password, rounds);
     this.password = hash;
@@ -136,8 +141,6 @@ userSchema.method({
  * Statics
  */
 userSchema.statics = {
-
-  roles: (this as any).roles,
 
   /**
    * Get user
@@ -200,7 +203,7 @@ userSchema.statics = {
   list({
     page = 1, perPage = 30, name, email, role,
   }) {
-    const options = omitBy({ name, email, role }, isNil);
+    const options = _.omitBy({ name, email, role }, _.isNil);
 
     return this.find(options)
       .sort({ createdAt: -1 })
@@ -232,7 +235,7 @@ userSchema.statics = {
       if (!user.name) user.name = name;
       return user.save();
     }
-    const password = uuidv4();
+    const password = uuid.v4();
     return this.create({
       services: { [service]: id }, email, password, name,
     });
